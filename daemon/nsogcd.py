@@ -160,6 +160,14 @@ class NSOGameCubeDaemon:
                 await asyncio.sleep(0.005)
         finally:
             self._destroy_uinput()
+            # The HCI transport must be released here. run() calls session()
+            # in a loop, and without this the next open(hci_index=0) fails with
+            # OSError(16) EBUSY forever, spinning every 5s while bluetoothd is
+            # still stopped -- so the host has no working Bluetooth at all.
+            try:
+                await b.close()
+            except Exception:
+                log.exception('failed to close HCI transport')
         return True
 
     async def run(self):
