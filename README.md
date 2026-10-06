@@ -20,7 +20,7 @@ sudo systemctl disable --now nsogcd
 sudo systemctl start bluetooth.service
 ```
 
-If the Bluetooth service was masked by a later experimental build, unmask it with `sudo systemctl unmask bluetooth.service` before starting it. The original installer used `/usr/local/lib/nsogcd`, `/usr/local/bin/nsogcd`, and `/etc/systemd/system/nsogcd.service` by default; SteamOS could use a different prefix. Remove those files only after checking your installation path.
+If the Bluetooth service was masked by a later experimental build, unmask it with `sudo systemctl unmask bluetooth.service` before starting it. To remove the original install, check its file locations first, then remove the service file and installed `nsogcd` program. The default paths are `/etc/systemd/system/nsogcd.service`, `/usr/local/bin/nsogcd`, and `/usr/local/lib/nsogcd`; SteamOS could use a different prefix. Run `sudo systemctl daemon-reload` after removing the service file.
 
 ## Research and credits
 
