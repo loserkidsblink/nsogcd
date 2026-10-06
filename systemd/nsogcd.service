@@ -1,15 +1,14 @@
 [Unit]
 Description=NSO GameCube Controller Daemon
 After=bluetooth.service
-Conflicts=bluetooth.service
 
 [Service]
 Type=simple
 User=root
-ExecStartPre=-/usr/bin/systemctl stop bluetooth.service
-Environment=PYTHONPATH=/home/bazzite/.local/lib/python3.14/site-packages
-ExecStart=/usr/bin/python3 -u /home/bazzite/nso-gc/daemon/nsogcd.py
-ExecStopPost=-/usr/bin/systemctl start bluetooth.service
+ExecStartPre=/usr/bin/systemctl mask --runtime --now bluetooth.service
+ExecStart=/usr/local/bin/nsogcd
+ExecStopPost=-/usr/bin/systemctl unmask --runtime bluetooth.service
+ExecStopPost=-/usr/bin/systemctl --no-block start bluetooth.service
 Restart=on-failure
 RestartSec=10
 TimeoutStartSec=300

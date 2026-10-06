@@ -33,10 +33,10 @@ install_deps() {
 
     case "$OS_ID" in
         bazzite|fedora|nobara|silverblue|kinoite)
-            # Fedora/RHEL family. Bazzite is OSTree-immutable but pip --user works in /var/home.
+            # Fedora/RHEL family. Python dependencies live in a dedicated venv.
             if ! command -v python3 >/dev/null; then echo "ERROR: python3 not found"; exit 1; fi
             if command -v rpm-ostree >/dev/null && [ -f /run/ostree-booted ]; then
-                echo "OSTree-based system detected. Installing Python deps via pip --user."
+                echo "OSTree-based system detected. Using a local Python venv."
             else
                 dnf install -y python3-pip bluez bluez-tools 2>/dev/null || true
             fi
@@ -54,20 +54,26 @@ install_deps() {
             ;;
         ubuntu|debian|pop|linuxmint)
             apt-get update -q
-            apt-get install -y python3-pip bluez 2>/dev/null || true
+            apt-get install -y python3-venv bluez 2>/dev/null || true
             ;;
         *)
             echo "Warning: unrecognized distro '$OS_ID'. Assuming Python and bluez are available."
             ;;
     esac
 
-    # Install Python deps via pip
-    INVOKE_USER="${SUDO_USER:-root}"
-    USER_HOME=$(getent passwd "$INVOKE_USER" | cut -d: -f6)
-    sudo -u "$INVOKE_USER" python3 -m pip install --user --quiet \
-        bumble evdev pyusb \
-        || python3 -m pip install --break-system-packages --quiet bumble evdev pyusb \
+    install -d -m 755 "$INSTALL_PREFIX/lib/nsogcd"
+    # Bazzite ships python3-evdev but not Python development headers. Make
+    # distro packages visible so pip does not try to compile evdev from source.
+    python3 -m venv --system-site-packages "$INSTALL_PREFIX/lib/nsogcd/.venv" \
+        || { echo "ERROR: python3 venv is unavailable; install your distro's python3-venv package"; exit 1; }
+    "$INSTALL_PREFIX/lib/nsogcd/.venv/bin/python" -m pip install --quiet \
+        'bumble==0.0.233' \
         || { echo "ERROR: failed to install Python dependencies"; exit 1; }
+    if ! "$INSTALL_PREFIX/lib/nsogcd/.venv/bin/python" -c 'import evdev' >/dev/null 2>&1; then
+        "$INSTALL_PREFIX/lib/nsogcd/.venv/bin/python" -m pip install --quiet \
+            'evdev>=1.7,<2' \
+            || { echo "ERROR: evdev is unavailable; install python3-evdev or Python development headers"; exit 1; }
+    fi
 
     echo "Dependencies installed."
 }
@@ -89,17 +95,23 @@ fetch_source() {
 install_files() {
     echo "Installing files..."
 
-    install -d -m 755 "$INSTALL_PREFIX/lib/nsogcd"
-    install -m 755 "$SRC_DIR/daemon/nsogcd.py" "$INSTALL_PREFIX/lib/nsogcd/nsogcd.py"
+    # Stop an older exclusive-HCI unit before replacing it; its stop hook
+    # restores bluetooth.service if it was masked at runtime.
+    systemctl stop nsogcd 2>/dev/null || true
 
-    # Install a wrapper that invokes Python with the right PYTHONPATH
-    INVOKE_USER="${SUDO_USER:-root}"
-    USER_HOME=$(getent passwd "$INVOKE_USER" | cut -d: -f6)
+    install -d -m 755 "$INSTALL_PREFIX/lib/nsogcd"
+    install -d -m 755 "$INSTALL_PREFIX/bin"
+    install -m 755 "$SRC_DIR/daemon/nsogcd.py" "$INSTALL_PREFIX/lib/nsogcd/nsogcd.py"
+    install -m 644 "$SRC_DIR/daemon/pairing_policy.py" "$INSTALL_PREFIX/lib/nsogcd/pairing_policy.py"
+    install -d -m 755 "$INSTALL_PREFIX/lib/nsogcd/gc_controller/ble"
+    install -m 644 "$SRC_DIR/daemon/gc_controller/__init__.py" "$INSTALL_PREFIX/lib/nsogcd/gc_controller/__init__.py"
+    install -m 644 "$SRC_DIR/daemon/gc_controller/ble/__init__.py" "$INSTALL_PREFIX/lib/nsogcd/gc_controller/ble/__init__.py"
+    install -m 644 "$SRC_DIR/daemon/gc_controller/ble/bumble_backend.py" "$INSTALL_PREFIX/lib/nsogcd/gc_controller/ble/bumble_backend.py"
+    install -m 644 "$SRC_DIR/daemon/gc_controller/ble/sw2_protocol.py" "$INSTALL_PREFIX/lib/nsogcd/gc_controller/ble/sw2_protocol.py"
 
     cat > "$INSTALL_PREFIX/bin/nsogcd" <<WRAPPER
 #!/usr/bin/env bash
-export PYTHONPATH="\${PYTHONPATH:+\$PYTHONPATH:}$USER_HOME/.local/lib/python3.14/site-packages:$USER_HOME/.local/lib/python3.13/site-packages:$USER_HOME/.local/lib/python3.12/site-packages:$USER_HOME/.local/lib/python3.11/site-packages"
-exec /usr/bin/python3 "$INSTALL_PREFIX/lib/nsogcd/nsogcd.py" "\$@"
+exec "$INSTALL_PREFIX/lib/nsogcd/.venv/bin/python" "$INSTALL_PREFIX/lib/nsogcd/nsogcd.py" "\$@"
 WRAPPER
     chmod 755 "$INSTALL_PREFIX/bin/nsogcd"
 
@@ -109,14 +121,14 @@ WRAPPER
 Description=NSO GameCube Controller Daemon
 Documentation=https://github.com/loserkidsblink/nsogcd
 After=bluetooth.service
-Conflicts=bluetooth.service
 
 [Service]
 Type=simple
 User=root
-ExecStartPre=-/usr/bin/systemctl stop bluetooth.service
+ExecStartPre=/usr/bin/systemctl mask --runtime --now bluetooth.service
 ExecStart=$INSTALL_PREFIX/bin/nsogcd
-ExecStopPost=-/usr/bin/systemctl start bluetooth.service
+ExecStopPost=-/usr/bin/systemctl unmask --runtime bluetooth.service
+ExecStopPost=-/usr/bin/systemctl --no-block start bluetooth.service
 Restart=on-failure
 RestartSec=10
 TimeoutStartSec=300
@@ -135,7 +147,7 @@ enable_service() {
     echo "Enabling and starting nsogcd..."
     systemctl enable nsogcd >/dev/null 2>&1 || true
     systemctl reset-failed nsogcd 2>/dev/null || true
-    systemctl start nsogcd || {
+    systemctl restart nsogcd || {
         echo "Warning: failed to start nsogcd. Check 'journalctl -u nsogcd' for details."
         return 1
     }
@@ -158,20 +170,27 @@ install_deps
 fetch_source
 install_files
 enable_service
+if [ -t 1 ]; then
+    echo "Hold Sync on the NSO GameCube controller until its LEDs sweep."
+    if ! "$INSTALL_PREFIX/bin/nsogcd" pair --wait; then
+        echo "Pairing can be retried later with: sudo nsogcd pair --wait"
+    fi
+else
+    "$INSTALL_PREFIX/bin/nsogcd" pair
+fi
 
 echo
 echo "=================================================="
 echo "  Installation complete!"
 echo "=================================================="
 echo
-echo "Press the sync button on your NSO GameCube controller now."
-echo "It should pair within ~3 seconds."
+echo "For first-time pairing or retry: sudo nsogcd pair --wait"
 echo
 echo "To check daemon status:    systemctl status nsogcd"
+echo "To check controller:       nsogcd status"
 echo "To watch live logs:        journalctl -u nsogcd -f"
-echo "To stop daemon (and"
-echo "  restore Bluetooth):      sudo systemctl stop nsogcd"
-echo "To uninstall:              sudo $INSTALL_PREFIX/lib/nsogcd/uninstall.sh"
+echo "To stop daemon:            sudo systemctl stop nsogcd"
+echo "To uninstall:              see the README's Uninstall section"
 echo
 echo "If using with Dolphin/RetroArch/Project+, also disable Steam Input"
 echo "for those games (Steam → game properties → Controller → Disable Steam Input)."

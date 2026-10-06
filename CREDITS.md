@@ -12,7 +12,10 @@
 - `_NINTENDO_OUIS` list for MAC-prefix scanning
 - The PairingDelegate configuration (Legacy SMP, no MITM, IDENTITY+ENCRYPTION key distribution)
 
-`nsogcd` imports Ryan's modules directly. Without his code, this project would have taken months instead of one night.
+`nsogcd` now bundles an adapted copy of the BLE backend and protocol modules
+instead of importing them from an external checkout. Their GPL-3.0 provenance
+remains the same. Without Ryan's code, this project would have taken months
+instead of one night.
 
 If you find this project useful, please go star Ryan's repo too.
 
@@ -92,7 +95,8 @@ Three novel reverse-engineering findings:
 3. **Full byte-level SPI bond region map** — documented every byte from `0x1fa000` through `0x1fa080`
 
 Plus the packaging:
-- systemd service that auto-starts and pairs on sync press (no manual app launch)
+- systemd service with an explicit first-pairing command and button-wake reconnect
+- Native GameCube motor on/off output verified on a Bazzite Legion Go
 - uinput device clone matching SDL's expected NSO GC identity
 - Distro-adaptive install script
 - Documentation

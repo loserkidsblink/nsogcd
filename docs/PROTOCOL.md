@@ -119,6 +119,14 @@ Key handles:
 - `0x001A` — command response
 - `0x001B` — command response CCCD
 
+The NSO GameCube controller accepted native motor output on BLE value handle
+`0x0016` in our Legion Go test. The BLE on/off packet built by
+`build_rumble_packet` uses a rolling transaction ID. The Linux daemon sends
+native on/off output at `FF_RUMBLE` effect transitions, preserving game timing.
+The separate `0x0A` command on `0x0014` plays built-in samples; repeatedly
+playing sample 2 produced harsh, long rumble in Melee Unlocked and should not
+be used for game force feedback.
+
 ## 7. Input Report Format (BlueRetro layout, 63 bytes)
 
 ```
@@ -166,4 +174,3 @@ The LTK as stored in SPI at offset `0x1fa01a` is in BLE wire byte order (LSB-fir
 
 ### BD_ADDR Discovery via SET_BDADDR ack
 When `cmd=0x15 sub=0x01` (PAIRING STEP1) is sent with all-zero BD_ADDR, the controller's response includes 6 bytes that match its own BLE BD_ADDR. This provides a way to determine the controller's BD_ADDR over USB without scanning.
-
