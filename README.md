@@ -1,6 +1,6 @@
 # nsogcd — NSO GameCube controller bridge for Linux
 
-**Status: v0.2 beta.** The controller path was exercised on a Bazzite Legion Go with the official Switch 2 NSO GameCube controller. Fresh installation on other distributions and SteamOS has not been verified. See [Releases](https://github.com/loserkidsblink/nsogcd/releases) for the tagged beta and known limits.
+**Status: v0.2.0.** The controller path was exercised on a Bazzite Legion Go with the official Switch 2 NSO GameCube controller. Fresh installation on other distributions and SteamOS has not been verified. See [Releases](https://github.com/loserkidsblink/nsogcd/releases) for the tagged release and known limits.
 
 `nsogcd` connects to the controller over its proprietary BLE protocol and exposes a Linux virtual gamepad. The bridge bundles its BLE pairing code and uses a dedicated Python environment, so it no longer depends on a separate checkout of the pairing app or a hard-coded home directory.
 
@@ -11,7 +11,7 @@
 | Linux, including Bazzite and SteamOS | [switch2-controllers-linux](https://github.com/trevlars/switch2-controllers-linux) | Multiple Switch 2 controllers, virtual gamepads, desktop pairing, a background service, and an optional Decky plugin. Check its README for current wake and rumble limits. |
 | macOS 15+ on Apple Silicon | [Finally the Controller Works](https://github.com/Peterksharma/switch2mac) | A signed Mac app with Bluetooth pairing and a system-wide virtual gamepad. Check its README for game rumble support. |
 
-Neither project needs `nsogcd`. The Linux project has a broader feature set; this beta keeps a GameCube-focused bridge and a physically verified native motor on/off path.
+Neither project needs `nsogcd`. The Linux project has a broader feature set; this release keeps a GameCube-focused bridge and a physically verified native motor on/off path.
 
 ## Install and pair
 
@@ -38,7 +38,7 @@ Check service and controller state with `nsogcd status`, and view detailed logs 
 ## Input and rumble
 
 - The physical A/B/X/Y, Z, ZL, L/R clicks, D-pad, sticks, and analog triggers are decoded into a `uinput` gamepad. Z/ZL and L/R were captured on the Legion Go. Steam may still need a per-game controller layout for Z; Steam Input mappings are separate from the physical input decoder.
-- The Linux gamepad accepts `FF_RUMBLE`. This beta maps an effect's start, stop, and duration to the GameCube motor's native on/off command. The physical controller produced a short pulse that stopped promptly, and game rumble in Melee Unlocked felt timed appropriately. Its single motor cannot reproduce independent strong and weak channels or HD rumble waveforms.
+- The Linux gamepad accepts `FF_RUMBLE`. This release maps an effect's start, stop, and duration to the GameCube motor's native on/off command. The physical controller produced a short pulse that stopped promptly, and game rumble in Melee Unlocked felt timed appropriately. Its single motor cannot reproduce independent strong and weak channels or HD rumble waveforms.
 - `NSOGCD_LAYOUT=modern` is an optional input layout that maps Z/ZL to conventional shoulder buttons and L/R clicks to trigger buttons. The default retains the earlier layout for existing profiles. The optional layout has not been verified across Steam and emulators.
 
 For the optional layout in the system service, add `Environment=NSOGCD_LAYOUT=modern` under `[Service]` with `sudo systemctl edit nsogcd`, then restart the service. Existing game profiles may need remapping.
@@ -51,7 +51,7 @@ The Bumble backend uses raw HCI access. While `nsogcd` runs, the service tempora
 sudo systemctl stop nsogcd
 ```
 
-This beta supports one controller at a time. The broader Linux alternative above uses a different transport and is the better starting point when Bluetooth coexistence or multiple pads matter. An experimental BlueZ coexistence backend exists only in local development and is not in this release.
+This release supports one controller at a time. The broader Linux alternative above uses a different transport and is the better starting point when Bluetooth coexistence or multiple pads matter. An experimental BlueZ coexistence backend exists only in local development and is not in this release.
 
 ## Uninstall
 
@@ -67,7 +67,7 @@ The default install paths are `/etc/systemd/system/nsogcd.service`, `/usr/local/
 
 ## Development status
 
-- [Issue #1](https://github.com/loserkidsblink/nsogcd/issues/1): the missing backend and hard-coded author path are addressed in this beta; a fresh install on the reporter's distro remains unverified.
+- [Issue #1](https://github.com/loserkidsblink/nsogcd/issues/1): the missing backend and hard-coded author path are addressed in this release; a fresh install on the reporter's distro remains unverified.
 - [Issue #2](https://github.com/loserkidsblink/nsogcd/issues/2): bonded button-wake reconnect was verified on a Legion Go; the reporter's exact setup remains unverified.
 - [PR #3](https://github.com/loserkidsblink/nsogcd/pull/3): the session and its bundled Bumble backend now both await transport cleanup; the exact 300-second scan-timeout reproduction remains unverified.
 
