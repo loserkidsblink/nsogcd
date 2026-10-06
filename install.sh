@@ -78,9 +78,24 @@ install_deps() {
     echo "Dependencies installed."
 }
 
-# Clone or update the repo to a temp location
+# Use the downloaded release bundle or local checkout when available. A piped
+# installer can still fetch its matching source from GitHub.
 fetch_source() {
+    SRC_DIR_TEMP=0
+    local script_path="${BASH_SOURCE[0]:-}"
+    if [ -n "$script_path" ] && [ -f "$script_path" ]; then
+        local script_dir
+        script_dir=$(cd "$(dirname "$script_path")" && pwd -P)
+        if [ -f "$script_dir/daemon/nsogcd.py" ] && \
+           [ -f "$script_dir/daemon/gc_controller/ble/bumble_backend.py" ]; then
+            SRC_DIR="$script_dir"
+            echo "Installing nsogcd from local bundle: $SRC_DIR"
+            return
+        fi
+    fi
+
     SRC_DIR=$(mktemp -d)
+    SRC_DIR_TEMP=1
     echo "Fetching nsogcd from $REPO_URL..."
     if command -v git >/dev/null; then
         git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$SRC_DIR" 2>&1 | tail -3
@@ -160,7 +175,7 @@ enable_service() {
 }
 
 cleanup() {
-    if [ -n "${SRC_DIR:-}" ] && [ -d "$SRC_DIR" ]; then
+    if [ "${SRC_DIR_TEMP:-0}" -eq 1 ] && [ -n "${SRC_DIR:-}" ] && [ -d "$SRC_DIR" ]; then
         rm -rf "$SRC_DIR"
     fi
 }

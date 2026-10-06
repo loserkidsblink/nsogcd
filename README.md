@@ -1,6 +1,6 @@
 # nsogcd — NSO GameCube controller bridge for Linux
 
-**Status: v0.2.0.** The controller path was exercised on a Bazzite Legion Go with the official Switch 2 NSO GameCube controller. Fresh installation on other distributions and SteamOS has not been verified. See [Releases](https://github.com/loserkidsblink/nsogcd/releases) for the tagged release and known limits.
+**Status: v0.2.1.** The controller path was exercised on a Bazzite Legion Go with the official Switch 2 NSO GameCube controller. Fresh installation on other distributions and SteamOS has not been verified. See [Releases](https://github.com/loserkidsblink/nsogcd/releases) for the downloadable Linux installer bundle and known limits.
 
 `nsogcd` connects to the controller over its proprietary BLE protocol and exposes a Linux virtual gamepad. The bridge bundles its BLE pairing code and uses a dedicated Python environment, so it no longer depends on a separate checkout of the pairing app or a hard-coded home directory.
 
@@ -15,15 +15,15 @@ Neither project needs `nsogcd`. The Linux project has a broader feature set; thi
 
 ## Install and pair
 
-On a Linux machine with a Bluetooth LE adapter, Python 3, and systemd:
+On a Linux machine with a Bluetooth LE adapter, Python 3, and systemd, download the `nsogcd-v0.2.1-linux.tar.gz` asset from [v0.2.1](https://github.com/loserkidsblink/nsogcd/releases/tag/v0.2.1), then extract and run its installer:
 
 ```bash
-git clone https://github.com/loserkidsblink/nsogcd.git
-cd nsogcd
+tar -xzf nsogcd-v0.2.1-linux.tar.gz
+cd nsogcd-v0.2.1-linux
 sudo ./install.sh
 ```
 
-The installer creates `/usr/local/lib/nsogcd/.venv` by default, installs its service, and opens a first-pairing window. Hold the controller's Sync button by its USB-C port until the player LEDs sweep. If the window expires, run:
+The bundle contains the daemon and installer; no Git checkout is needed. The installer still downloads its Python dependencies, creates `/usr/local/lib/nsogcd/.venv` by default, installs its service, and opens a first-pairing window. Hold the controller's Sync button by its USB-C port until the player LEDs sweep. If the window expires, run:
 
 ```bash
 sudo nsogcd pair --wait
