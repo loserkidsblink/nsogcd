@@ -11,6 +11,12 @@
 
 Follow each project's own installation and pairing instructions. These are independent projects; `nsogcd` is not required for either one.
 
+## Status of this project's fixes
+
+The public v0.1 code still has the installer dependency problem in [#1](https://github.com/loserkidsblink/nsogcd/issues/1), the bonded reconnect failure in [#2](https://github.com/loserkidsblink/nsogcd/issues/2), and the HCI transport cleanup problem discussed in [PR #3](https://github.com/loserkidsblink/nsogcd/pull/3). Do not treat this README update as a release of those fixes.
+
+In local development on a Bazzite Legion Go, we bundled the missing backend, used a dedicated Python environment, closed the Bumble transport, and changed reconnect handling. We also verified Z/ZL input and native GameCube rumble on/off against the physical controller. That development branch is not published as a supported release, and its fresh installation on other distributions has not been verified. The maintained projects above are the recommended path for new users.
+
 ## If you installed nsogcd already
 
 Its original Linux service takes control of the Bluetooth adapter while it runs. Stop and disable it before trying another controller bridge:
